@@ -30,26 +30,19 @@ jobs:
           set -o pipefail
 
           # Run the Ruby bumper script
+          # If it exits with 1, the pipeline will fail automatically due to set -e (default in GH Actions)
           ruby .github/scripts/bump_casks.rb
-          BUMP_STATUS=$?
 
-          if [ $BUMP_STATUS -eq 2 ]; then
-            echo "No updates needed."
-            exit 0
-          elif [ $BUMP_STATUS -ne 0 ]; then
-            echo "An error occurred in the bump script (Exit code: $BUMP_STATUS)."
-            exit 1
-          fi
-
-          # If BUMP_STATUS is 0, we proceed to commit and push changes
+          # Commit and push changes if any files were modified
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@github.com"
           git add .
           if git diff --staged --quiet; then
-            echo "No changes to commit."
+            echo "No updates found, nothing to commit."
             exit 0
           else
-            # Get the version from the file for branch naming and commit message
+            # Get the version from a modified file for branch naming and commit message
+            # We use kitty-linux as the primary reference since it's our main cask
             FINAL_VERSION=$(grep 'version' Casks/kitty-linux.rb | awk -F '"' '{print $2}')
             BRANCH_NAME="auto-update-kitty-${FINAL_VERSION}"
 

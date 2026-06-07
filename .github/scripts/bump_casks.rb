@@ -30,12 +30,10 @@ def bump_cask(cask_name, new_version)
 
   content = File.read(file_path)
 
-  # 1. Extract the URL template from the file
   url_match = content.match(/url\s+"([^"]+)"/)
   return false unless url_match
   url_template = url_match[1]
 
-  # 2. Identify architectures based on existing sha256 keys
   arch_keys = content.scan(/([a-z0-9_]+)_linux:\s+"[a-f0-9]{64}"/).flatten
   if arch_keys.empty?
     sha_match = content.match(/sha256\s+([a-z0-9_]+):\s+"/)
@@ -47,7 +45,6 @@ def bump_cask(cask_name, new_version)
     return false
   end
 
-  # 3. Update version and SHAs
   updated_content = content.gsub(/version\s+".*"/, "version \"#{new_version}\"")
 
   arch_keys.each do |key|
@@ -75,7 +72,7 @@ puts "Scanning for Casks in the local repository..."
 cask_files = Dir.glob("Casks/*.rb")
 if cask_files.empty?
   warn "Error: No casks found in Casks/ directory."
-  exit 1 # Error
+  exit 1
 end
 
 cask_names = cask_files.map { |f| File.basename(f, ".rb") }
@@ -84,18 +81,18 @@ puts "Checking updates for: #{cask_names.join(', ')}"
 livecheck_output = run_command("brew livecheck --json #{cask_names.join(' ')}")
 if livecheck_output.nil?
   warn "Error: brew livecheck failed to execute."
-  exit 1 # Error
+  exit 1
 end
 
 begin
   data = JSON.parse(livecheck_output)
 rescue JSON::ParserError => e
   warn "Error parsing livecheck JSON: #{e.message}"
-  exit 1 # Error
+  exit 1
 end
 
-updated_any = false
 error_occurred = false
+updated_count = 0
 
 data.each do |item|
   name = item["name"]
@@ -104,9 +101,8 @@ data.each do |item|
 
   if status == "outdated"
     puts "Found outdated cask: #{name} (Latest: #{latest})"
-    success = bump_cask(name, latest)
-    if success
-      updated_any = true
+    if bump_cask(name, latest)
+      updated_count += 1
     else
       warn "Failed to bump #{name}"
       error_occurred = true
@@ -117,11 +113,8 @@ data.each do |item|
 end
 
 if error_occurred
-  exit 1 # Actual failure occurred during bumping
-elsif updated_any
-  puts "BUMP_SUCCESSFUL=true"
-  exit 0 # Success with changes
+  exit 1 # Real failure occurred during bumping
 else
-  puts "No updates required."
-  exit 2 # No changes needed (special exit code)
+  puts "Successfully processed updates. Casks updated: #{updated_count}"
+  exit 0 # Job completed successfully, regardless of whether changes were made
 end
