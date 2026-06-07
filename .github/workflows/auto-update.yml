@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout Tap
         uses: actions/checkout@v4
@@ -63,15 +64,28 @@ jobs:
             echo "Updated $cask_name to version $NEW_VERSION"
           done
 
-          # Commit and push changes
+          # Commit and push changes to a new branch
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@github.com"
           git add .
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
-            # Get the last updated version for the commit message
+            # Get the version for branch naming and commit message
             FINAL_VERSION=$(brew livecheck --json Casks/kitty-linux.rb | jq -r '.[] | select(.status == "outdated") | .latest' | head -n 1)
+            BRANCH_NAME="auto-update-kitty-${FINAL_VERSION}"
+
+            git checkout -b "$BRANCH_NAME"
             git commit -m "Update kitty-linux to version ${FINAL_VERSION}"
-            git push
+            git push origin "$BRANCH_NAME"
+
+            # Create Pull Request and add the trigger label
+            # Note: requires GH_TOKEN env var (already provided)
+            gh pr create --title "Update kitty-linux to version ${FINAL_VERSION}" \
+                         --body "Automated update of kitty-linux to version ${FINAL_VERSION}." \
+                         --base main \
+                         --head "$BRANCH_NAME"
+
+            # Add the label that triggers the merge job
+            gh pr edit --add-label "pr-pull"
           fi
