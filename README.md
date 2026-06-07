@@ -1,5 +1,11 @@
 # Orphaninstance Tap
 
+## Available Software
+
+| Package | Type | Description |
+| :--- | :--- | :--- |
+| `orphaninstance-kitty` | Cask | GPU-based terminal emulator for Linux (includes icon and terminfo) |
+
 ## How do I install these formulae?
 
 `brew install orphaninstance/tap/<formula>`
