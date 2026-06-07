@@ -30,12 +30,18 @@ jobs:
           set -o pipefail
 
           # Run the Ruby bumper script
-          if ! ruby .github/scripts/bump_casks.rb; then
-            echo "No updates needed or an error occurred."
+          ruby .github/scripts/bump_casks.rb
+          BUMP_STATUS=$?
+
+          if [ $BUMP_STATUS -eq 2 ]; then
+            echo "No updates needed."
             exit 0
+          elif [ $BUMP_STATUS -ne 0 ]; then
+            echo "An error occurred in the bump script (Exit code: $BUMP_STATUS)."
+            exit 1
           fi
 
-          # Commit and push changes to a new branch
+          # If BUMP_STATUS is 0, we proceed to commit and push changes
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@github.com"
           git add .

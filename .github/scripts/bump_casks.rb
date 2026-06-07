@@ -72,22 +72,30 @@ end
 # Main execution
 puts "Scanning for Casks in the local repository..."
 
-# Find all .rb files in the Casks directory to get a list of names
 cask_files = Dir.glob("Casks/*.rb")
 if cask_files.empty?
-  puts "No casks found in Casks/ directory."
-  exit 1
+  warn "Error: No casks found in Casks/ directory."
+  exit 1 # Error
 end
 
 cask_names = cask_files.map { |f| File.basename(f, ".rb") }
 puts "Checking updates for: #{cask_names.join(', ')}"
 
-# Run livecheck on the specific list of names found in the repo
 livecheck_output = run_command("brew livecheck --json #{cask_names.join(' ')}")
-exit 1 if livecheck_output.nil?
+if livecheck_output.nil?
+  warn "Error: brew livecheck failed to execute."
+  exit 1 # Error
+end
 
-data = JSON.parse(livecheck_output)
+begin
+  data = JSON.parse(livecheck_output)
+rescue JSON::ParserError => e
+  warn "Error parsing livecheck JSON: #{e.message}"
+  exit 1 # Error
+end
+
 updated_any = false
+error_occurred = false
 
 data.each do |item|
   name = item["name"]
@@ -96,16 +104,24 @@ data.each do |item|
 
   if status == "outdated"
     puts "Found outdated cask: #{name} (Latest: #{latest})"
-    updated_any ||= bump_cask(name, latest)
+    success = bump_cask(name, latest)
+    if success
+      updated_any = true
+    else
+      warn "Failed to bump #{name}"
+      error_occurred = true
+    end
   else
     puts "#{name} is up to date."
   end
 end
 
-if updated_any
+if error_occurred
+  exit 1 # Actual failure occurred during bumping
+elsif updated_any
   puts "BUMP_SUCCESSFUL=true"
-  exit 0
+  exit 0 # Success with changes
 else
   puts "No updates required."
-  exit 1
+  exit 2 # No changes needed (special exit code)
 end
