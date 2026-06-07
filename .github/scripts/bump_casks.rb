@@ -31,16 +31,13 @@ def bump_cask(cask_name, new_version)
   content = File.read(file_path)
 
   # 1. Extract the URL template from the file
-  # Looks for: url "..."
   url_match = content.match(/url\s+"([^"]+)"/)
   return false unless url_match
   url_template = url_match[1]
 
   # 2. Identify architectures based on existing sha256 keys
-  # Look for things like arm64_linux: "..." or x86_64_linux: "..."
   arch_keys = content.scan(/([a-z0-9_]+)_linux:\s+"[a-f0-9]{64}"/).flatten
   if arch_keys.empty?
-    # Fallback for single SHA cases or different naming
     sha_match = content.match(/sha256\s+([a-z0-9_]+):\s+"/)
     arch_keys << sha_match[1] if sha_match
   end
@@ -54,11 +51,7 @@ def bump_cask(cask_name, new_version)
   updated_content = content.gsub(/version\s+".*"/, "version \"#{new_version}\"")
 
   arch_keys.each do |key|
-    # Map arch key (e.g., arm64_linux) to URL placeholder (e.g., arm64)
     url_arch = key.sub("_linux", "")
-
-    # Interpolate the template: replace #{version} and #{arch}
-    # We use a simple gsub for interpolation since these are standard Homebrew placeholders
     final_url = url_template
                 .gsub("#{version}", new_version)
                 .gsub("#{arch}", url_arch)
@@ -69,7 +62,6 @@ def bump_cask(cask_name, new_version)
       return false
     end
 
-    # Update the specific SHA key in the content
     updated_content.gsub!(/#{key}:\s+"[a-f0-9]{64}"/, "#{key}: \"#{sha}\"")
   end
 
@@ -78,9 +70,20 @@ def bump_cask(cask_name, new_version)
 end
 
 # Main execution
-puts "Checking for updates in #{TAP}..."
-# Check all casks currently in the tap (via livecheck on the whole tap)
-livecheck_output = run_command("brew livecheck --json #{TAP}")
+puts "Scanning for Casks in the local repository..."
+
+# Find all .rb files in the Casks directory to get a list of names
+cask_files = Dir.glob("Casks/*.rb")
+if cask_files.empty?
+  puts "No casks found in Casks/ directory."
+  exit 1
+end
+
+cask_names = cask_files.map { |f| File.basename(f, ".rb") }
+puts "Checking updates for: #{cask_names.join(', ')}"
+
+# Run livecheck on the specific list of names found in the repo
+livecheck_output = run_command("brew livecheck --json #{cask_names.join(' ')}")
 exit 1 if livecheck_output.nil?
 
 data = JSON.parse(livecheck_output)
@@ -104,5 +107,5 @@ if updated_any
   exit 0
 else
   puts "No updates required."
-  exit 1 # Exit with error so the workflow knows no changes were made
+  exit 1
 end
