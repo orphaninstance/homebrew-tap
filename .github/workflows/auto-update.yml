@@ -17,8 +17,8 @@ jobs:
       - name: Install Homebrew
         run: |
           /bin/bash -c "$(curl -fsSL https://cdn.homebrew.sh/install.sh)"
-          echo "/home/runner/.linuxbrew/bin" >> $GITHUB_PATH
-          echo "/home/runner/.linuxbrew/sbin" >> $GITHUB_PATH
+          echo "/home/runner/.linuxbrew/bin" >> "$GITHUB_PATH"
+          echo "/home/runner/.linuxbrew/sbin" >> "$GITHUB_PATH"
 
       - name: Tap this repository
         run: brew tap orphaninstance/homebrew-tap
@@ -36,7 +36,9 @@ jobs:
             exit 0
           fi
 
-          for cask_name in $OUTDATED; do
+          # Iterate over outdated casks using a while loop to avoid word-splitting issues
+          echo "$OUTDATED" | while read -r cask_name; do
+            [ -z "$cask_name" ] && continue
             echo "Updating $cask_name..."
 
             # Get the latest version from livecheck
@@ -47,14 +49,13 @@ jobs:
 
             echo "Calculating SHA256 for arm64..."
             ARM64_URL="https://github.com/kovidgoyal/kitty/releases/download/v${NEW_VERSION}/kitty-${NEW_VERSION}-arm64.txz"
-            ARM64_SHA=$(curl -sL $ARM64_URL | shasum -a 256 | awk '{print $1}')
+            ARM64_SHA=$(curl -sL "$ARM64_URL" | shasum -a 256 | awk '{print $1}')
 
             echo "Calculating SHA256 for x86_64..."
             X86_64_URL="https://github.com/kovidgoyal/kitty/releases/download/v${NEW_VERSION}/kitty-${NEW_VERSION}-x86_64.txz"
-            X86_64_SHA=$(curl -sL $X86_64_URL | shasum -a 256 | awk '{print $1}')
+            X86_64_SHA=$(curl -sL "$X86_64_URL" | shasum -a 256 | awk '{print $1}')
 
             # Update the file using sed (since we know exactly where these fields are)
-            # Note: This is a simple replacement. In a more complex repo, we'd use a Ruby script.
             sed -i "s/version \".*\"/version \"${NEW_VERSION}\"/" Casks/kitty-linux.rb
             sed -i "s/arm64_linux:  \".*\",/arm64_linux:  \"${ARM64_SHA}\",/" Casks/kitty-linux.rb
             sed -i "s/x86_64_linux: \".*\"/x86_64_linux: \"${X86_64_SHA}\"/" Casks/kitty-linux.rb
@@ -69,6 +70,8 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "Update kitty-linux to version ${NEW_VERSION}"
+            # Get the last updated version for the commit message
+            FINAL_VERSION=$(brew livecheck --json Casks/kitty-linux.rb | jq -r '.[] | select(.status == "outdated") | .latest' | head -n 1)
+            git commit -m "Update kitty-linux to version ${FINAL_VERSION}"
             git push
           fi
