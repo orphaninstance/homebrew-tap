@@ -1,0 +1,74 @@
+name: Auto Update Casks
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # Run daily at 6 AM UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Tap
+        uses: actions/checkout@v4
+
+      - name: Install Homebrew
+        run: |
+          /bin/bash -c "$(curl -fsSL https://cdn.homebrew.sh/install.sh)"
+          echo "/home/runner/.linuxbrew/bin" >> $GITHUB_PATH
+          echo "/home/runner/.linuxbrew/sbin" >> $GITHUB_PATH
+
+      - name: Tap this repository
+        run: brew tap orphaninstance/homebrew-tap
+
+      - name: Check for updates and bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. Find outdated casks using livecheck
+          # We use --json to make parsing easier
+          OUTDATED=$(brew livecheck --json Casks/kitty-linux.rb | jq -r '.[] | select(.status == "outdated") | .name')
+
+          if [ -z "$OUTDATED" ]; then
+            echo "All casks are up to date."
+            exit 0
+          fi
+
+          for cask_name in $OUTDATED; do
+            echo "Updating $cask_name..."
+
+            # Get the latest version from livecheck
+            NEW_VERSION=$(brew livecheck --json Casks/kitty-linux.rb | jq -r '.[] | select(.status == "outdated") | .latest')
+
+            # We need to calculate SHAs for both architectures: arm64 and x86_64
+            # URL template: https://github.com/kovidgoyal/kitty/releases/download/v#{version}/kitty-#{version}-#{arch}.txz
+
+            echo "Calculating SHA256 for arm64..."
+            ARM64_URL="https://github.com/kovidgoyal/kitty/releases/download/v${NEW_VERSION}/kitty-${NEW_VERSION}-arm64.txz"
+            ARM64_SHA=$(curl -sL $ARM64_URL | shasum -a 256 | awk '{print $1}')
+
+            echo "Calculating SHA256 for x86_64..."
+            X86_64_URL="https://github.com/kovidgoyal/kitty/releases/download/v${NEW_VERSION}/kitty-${NEW_VERSION}-x86_64.txz"
+            X86_64_SHA=$(curl -sL $X86_64_URL | shasum -a 256 | awk '{print $1}')
+
+            # Update the file using sed (since we know exactly where these fields are)
+            # Note: This is a simple replacement. In a more complex repo, we'd use a Ruby script.
+            sed -i "s/version \".*\"/version \"${NEW_VERSION}\"/" Casks/kitty-linux.rb
+            sed -i "s/arm64_linux:  \".*\",/arm64_linux:  \"${ARM64_SHA}\",/" Casks/kitty-linux.rb
+            sed -i "s/x86_64_linux: \".*\"/x86_64_linux: \"${X86_64_SHA}\"/" Casks/kitty-linux.rb
+
+            echo "Updated $cask_name to version $NEW_VERSION"
+          done
+
+          # Commit and push changes
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@github.com"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update kitty-linux to version ${NEW_VERSION}"
+            git push
+          fi

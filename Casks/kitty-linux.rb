@@ -21,26 +21,15 @@ cask "kitty-linux" do
   binary "bin/kitten"
   artifact "kitty.desktop",
            target: "#{Dir.home}/.local/share/applications/kitty.desktop"
-  artifact "kitty.png",
-           target: "#{Dir.home}/.local/share/icons/hicolor/512x512/apps/kitty.png"
+  artifact "share/icons/hicolor/scalable/apps/kitty.svg",
+           target: "#{Dir.home}/.local/share/icons/hicolor/scalable/apps/kitty.svg"
   artifact "share/terminfo/x/xterm-kitty",
            target: "#{Dir.home}/.terminfo/x/xterm-kitty"
 
   preflight do
     FileUtils.mkdir_p("#{Dir.home}/.local/share/applications")
-    FileUtils.mkdir_p("#{Dir.home}/.local/share/icons/hicolor/512x512/apps")
+    FileUtils.mkdir_p("#{Dir.home}/.local/share/icons/hicolor/scalable/apps")
     FileUtils.mkdir_p("#{Dir.home}/.terminfo/x")
-
-    # Download the official kitty icon
-    system(
-      "curl", "-L", "https://github.com/kovidgoyal/kitty/raw/master/logo/kitty.png",
-      "-o", "#{staged_path}/kitty.png"
-    )
-
-    # Verify icon integrity
-    actual_sha = Digest::SHA256.file("#{staged_path}/kitty.png").hexdigest
-    expected_sha = "238d24e2730c94e9aaed76d25140bb3e2ade241ec313cc0b29d206e46cbfdabe"
-    raise "Icon checksum mismatch! Expected #{expected_sha}, got #{actual_sha}" if actual_sha != expected_sha
 
     File.write("#{staged_path}/kitty.desktop", <<~EOS)
       [Desktop Entry]
@@ -48,7 +37,7 @@ cask "kitty-linux" do
       Comment=GPU-based terminal emulator
       GenericName=Terminal Emulator
       Exec=#{HOMEBREW_PREFIX}/bin/kitty
-      Icon=#{Dir.home}/.local/share/icons/hicolor/512x512/apps/kitty.png
+      Icon=#{Dir.home}/.local/share/icons/hicolor/scalable/apps/kitty.svg
       Type=Application
       StartupNotify=false
       StartupWMClass=kitty
@@ -60,7 +49,7 @@ cask "kitty-linux" do
   zap trash: [
     "~/.config/kitty",
     "~/.local/share/applications/kitty.desktop",
-    "~/.local/share/icons/hicolor/512x512/apps/kitty.png",
+    "~/.local/share/icons/hicolor/scalable/apps/kitty.svg",
     "~/.terminfo/x/xterm-kitty",
   ]
 
