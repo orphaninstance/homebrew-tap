@@ -31,7 +31,7 @@ jobs:
 
           # 1. Find outdated casks using livecheck
           # We use --json to make parsing easier
-          if ! OUTDATED=$(brew livecheck --json orphaninstance/kitty-linux | jq -r '.[] | select(.status == "outdated") | .name'); then
+          if ! OUTDATED=$(brew livecheck --json orphaninstance/tap/kitty-linux | jq -r '.[] | select(.status == "outdated") | .name'); then
             echo "Error: brew livecheck failed to execute."
             exit 1
           fi
