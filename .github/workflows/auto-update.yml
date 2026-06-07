@@ -2,7 +2,7 @@ name: Auto Update Casks
 
 on:
   schedule:
-    - cron: '0 6 * * *' # Run daily at 6 AM UTC
+    - cron: "0 6 * * *" # Run daily at 6 AM UTC
   workflow_dispatch: # Allow manual trigger
 
 jobs:
@@ -27,9 +27,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -o pipefail
+
           # 1. Find outdated casks using livecheck
           # We use --json to make parsing easier
-          OUTDATED=$(brew livecheck --json orphaninstance/tap/kitty-linux | jq -r '.[] | select(.status == "outdated") | .name')
+          if ! OUTDATED=$(brew livecheck --json orphaninstance/kitty-linux | jq -r '.[] | select(.status == "outdated") | .name'); then
+            echo "Error: brew livecheck failed to execute."
+            exit 1
+          fi
 
           if [ -z "$OUTDATED" ]; then
             echo "All casks are up to date."
