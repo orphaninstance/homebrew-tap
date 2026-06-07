@@ -18,6 +18,7 @@ cask "kitty-linux" do
   depends_on :linux
 
   binary "bin/kitty"
+  binary "bin/kitten"
   artifact "kitty.desktop",
            target: "#{Dir.home}/.local/share/applications/kitty.desktop"
   artifact "kitty.png",
