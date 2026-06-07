@@ -29,44 +29,11 @@ jobs:
         run: |
           set -o pipefail
 
-          # 1. Find outdated casks using livecheck
-          # We use --json to make parsing easier
-          if ! OUTDATED=$(brew livecheck --json orphaninstance/tap/kitty-linux | jq -r '.[] | select(.status == "outdated") | .name'); then
-            echo "Error: brew livecheck failed to execute."
-            exit 1
-          fi
-
-          if [ -z "$OUTDATED" ]; then
-            echo "All casks are up to date."
+          # Run the Ruby bumper script
+          if ! ruby .github/scripts/bump_casks.rb; then
+            echo "No updates needed or an error occurred."
             exit 0
           fi
-
-          # Iterate over outdated casks using a while loop to avoid word-splitting issues
-          echo "$OUTDATED" | while read -r cask_name; do
-            [ -z "$cask_name" ] && continue
-            echo "Updating $cask_name..."
-
-            # Get the latest version from livecheck
-            NEW_VERSION=$(brew livecheck --json orphaninstance/tap/kitty-linux | jq -r '.[] | select(.status == "outdated") | .latest')
-
-            # We need to calculate SHAs for both architectures: arm64 and x86_64
-            # URL template: https://github.com/kovidgoyal/kitty/releases/download/v#{version}/kitty-#{version}-#{arch}.txz
-
-            echo "Calculating SHA256 for arm64..."
-            ARM64_URL="https://github.com/kovidgoyal/kitty/releases/download/v${NEW_VERSION}/kitty-${NEW_VERSION}-arm64.txz"
-            ARM64_SHA=$(curl -sL "$ARM64_URL" | shasum -a 256 | awk '{print $1}')
-
-            echo "Calculating SHA256 for x86_64..."
-            X86_64_URL="https://github.com/kovidgoyal/kitty/releases/download/v${NEW_VERSION}/kitty-${NEW_VERSION}-x86_64.txz"
-            X86_64_SHA=$(curl -sL "$X86_64_URL" | shasum -a 256 | awk '{print $1}')
-
-            # Update the file using sed (since we know exactly where these fields are)
-            sed -i "s/version \".*\"/version \"${NEW_VERSION}\"/" Casks/kitty-linux.rb
-            sed -i "s/arm64_linux:  \".*\",/arm64_linux:  \"${ARM64_SHA}\",/" Casks/kitty-linux.rb
-            sed -i "s/x86_64_linux: \".*\"/x86_64_linux: \"${X86_64_SHA}\"/" Casks/kitty-linux.rb
-
-            echo "Updated $cask_name to version $NEW_VERSION"
-          done
 
           # Commit and push changes to a new branch
           git config --global user.name "github-actions[bot]"
@@ -74,9 +41,10 @@ jobs:
           git add .
           if git diff --staged --quiet; then
             echo "No changes to commit."
+            exit 0
           else
-            # Get the version for branch naming and commit message
-            FINAL_VERSION=$(brew livecheck --json orphaninstance/tap/kitty-linux | jq -r '.[] | select(.status == "outdated") | .latest' | head -n 1)
+            # Get the version from the file for branch naming and commit message
+            FINAL_VERSION=$(grep 'version' Casks/kitty-linux.rb | awk -F '"' '{print $2}')
             BRANCH_NAME="auto-update-kitty-${FINAL_VERSION}"
 
             git checkout -b "$BRANCH_NAME"
@@ -84,11 +52,10 @@ jobs:
             git push origin "$BRANCH_NAME"
 
             # Create Pull Request and add the trigger label
-            # Note: requires GH_TOKEN env var (already provided)
             gh pr create --title "Update kitty-linux to version ${FINAL_VERSION}" \
-                         --body "Automated update of kitty-linux to version ${FINAL_VERSION}." \
-                         --base main \
-                         --head "$BRANCH_NAME"
+                             --body "Automated update of kitty-linux to version ${FINAL_VERSION}." \
+                             --base main \
+                             --head "$BRANCH_NAME"
 
             # Add the label that triggers the merge job
             gh pr edit --add-label "pr-pull"
