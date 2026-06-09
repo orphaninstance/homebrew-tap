@@ -47,6 +47,7 @@ cask "kitty-linux" do
   end
 
   zap trash: [
+    "~/.cache/kitty",
     "~/.config/kitty",
     "~/.local/share/applications/kitty.desktop",
     "~/.local/share/icons/hicolor/scalable/apps/kitty.svg",
