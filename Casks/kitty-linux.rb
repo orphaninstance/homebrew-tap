@@ -3,7 +3,7 @@ cask "kitty-linux" do
 
   version "0.47.3"
   sha256 arm64_linux:  "600efb979d9188758d89fcfe13155cb43027e037d7c70bedd8afcd743119ae8a",
-         x86_64_linux: "5495d99ce8e10e3b5e78be1664e6ab6040f3a7db33fd78981b9f5e3782f5921b"
+         x86_64_linux: "e752d6d24bae696fe2cdee34a932557ff0dfbf37768d41e61ef4501ca9f57226"
 
   url "https://github.com/kovidgoyal/kitty/releases/download/v#{version}/kitty-#{version}-#{arch}.txz"
   name "kitty"
