@@ -95,11 +95,10 @@ error_occurred = false
 updated_count = 0
 
 data.each do |item|
-  name = item["name"]
-  status = item["status"]
-  latest = item["latest"]
+  name = item["cask"]
 
-  if status == "outdated"
+  if item.dig("version", "outdated")
+    latest = item.dig("version", "latest")
     puts "Found outdated cask: #{name} (Latest: #{latest})"
     if bump_cask(name, latest)
       updated_count += 1
