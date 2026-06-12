@@ -50,8 +50,8 @@ def bump_cask(cask_name, new_version)
   arch_keys.each do |key|
     url_arch = key.sub("_linux", "")
     final_url = url_template
-                .gsub("#{version}", new_version)
-                .gsub("#{arch}", url_arch)
+                .gsub("\#{version}", new_version)
+                .gsub("\#{arch}", url_arch)
 
     sha = calculate_sha256(final_url)
     if sha.nil?
