@@ -25,37 +25,7 @@ jobs:
 
       - name: Check for updates and bump
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
         run: |
           set -o pipefail
-
-          # Run the Ruby bumper script
-          # If it exits with 1, the pipeline will fail automatically due to set -e (default in GH Actions)
-          ruby .github/scripts/bump_casks.rb
-
-          # Commit and push changes if any files were modified
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@github.com"
-          git add .
-          if git diff --staged --quiet; then
-            echo "No updates found, nothing to commit."
-            exit 0
-          else
-            # Get the version from a modified file for branch naming and commit message
-            # We use kitty-linux as the primary reference since it's our main cask
-            FINAL_VERSION=$(grep '^  version' Casks/kitty-linux.rb | awk -F '"' '{print $2}')
-            BRANCH_NAME="auto-update-kitty-${FINAL_VERSION}"
-
-            git checkout -b "$BRANCH_NAME"
-            git commit -m "Update kitty-linux to version ${FINAL_VERSION}"
-            git push origin "$BRANCH_NAME"
-
-            # Create Pull Request and add the trigger label
-            gh pr create --title "Update kitty-linux to version ${FINAL_VERSION}" \
-                             --body "Automated update of kitty-linux to version ${FINAL_VERSION}." \
-                             --base main \
-                             --head "$BRANCH_NAME"
-
-            # Add the label that triggers the merge job
-            gh pr edit --add-label "pr-pull"
-          fi
+          brew bump --cask --open-pr --no-pull-requests --tap orphaninstance/homebrew-tap
