@@ -43,7 +43,7 @@ jobs:
           else
             # Get the version from a modified file for branch naming and commit message
             # We use kitty-linux as the primary reference since it's our main cask
-            FINAL_VERSION=$(grep 'version' Casks/kitty-linux.rb | awk -F '"' '{print $2}')
+            FINAL_VERSION=$(grep '^  version' Casks/kitty-linux.rb | awk -F '"' '{print $2}')
             BRANCH_NAME="auto-update-kitty-${FINAL_VERSION}"
 
             git checkout -b "$BRANCH_NAME"
