@@ -28,4 +28,8 @@ jobs:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
         run: |
           set -o pipefail
-          brew bump --cask --open-pr --no-pull-requests --tap orphaninstance/homebrew-tap
+          brew bump --cask --open-pr --tap orphaninstance/homebrew-tap
+
+          # Add the trigger label to any newly created update PRs
+          echo "Adding 'pr-pull' labels to new update PRs..."
+          gh pr list --json number,title -q '.[] | select(.title | startswith("Update")) | .number' | xargs -I {} gh pr edit {} --add-label "pr-pull"
