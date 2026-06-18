@@ -2,6 +2,9 @@
 # .github/scripts/bump_casks.rb
 require 'json'
 require 'open3'
+require 'digest'
+require 'shellwords'
+require 'tempfile'
 
 # Configuration
 TAP = "orphaninstance/homebrew-tap"
@@ -18,9 +21,14 @@ end
 
 def calculate_sha256(url)
   puts "Calculating SHA for #{url}..."
-  res = run_command("curl -sL --fail \"#{url}\" | shasum -a 256")
-  return nil unless res
-  res.split.first
+  Tempfile.create("cask-download") do |file|
+    file.close
+
+    res = run_command("curl -sSL --fail --retry 3 --output #{file.path.shellescape} #{url.shellescape}")
+    return nil unless res
+
+    Digest::SHA256.file(file.path).hexdigest
+  end
 end
 
 def bump_cask(cask_name, new_version)
@@ -34,7 +42,7 @@ def bump_cask(cask_name, new_version)
   return false unless url_match
   url_template = url_match[1]
 
-  arch_keys = content.scan(/([a-z0-9_]+)_linux:\s+"[a-f0-9]{64}"/).flatten
+  arch_keys = content.scan(/([a-z0-9_]+_linux):\s+"[a-f0-9]{64}"/).flatten
   if arch_keys.empty?
     sha_match = content.match(/sha256\s+([a-z0-9_]+):\s+"/)
     arch_keys << sha_match[1] if sha_match
@@ -48,7 +56,7 @@ def bump_cask(cask_name, new_version)
   updated_content = content.gsub(/version\s+".*"/, "version \"#{new_version}\"")
 
   arch_keys.each do |key|
-    url_arch = key.sub("_linux", "")
+    url_arch = key.sub(/_linux\z/, "")
     final_url = url_template
                 .gsub("\#{version}", new_version)
                 .gsub("\#{arch}", url_arch)
@@ -59,7 +67,11 @@ def bump_cask(cask_name, new_version)
       return false
     end
 
-    updated_content.gsub!(/#{key}:\s+"[a-f0-9]{64}"/, "#{key}: \"#{sha}\"")
+    replacement = updated_content.gsub!(/#{Regexp.escape(key)}:\s+"[a-f0-9]{64}"/, "#{key}: \"#{sha}\"")
+    unless replacement
+      warn "Failed to update SHA for #{key} in #{file_path}"
+      return false
+    end
   end
 
   File.write(file_path, updated_content)
