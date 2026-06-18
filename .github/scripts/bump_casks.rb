@@ -18,7 +18,7 @@ end
 
 def calculate_sha256(url)
   puts "Calculating SHA for #{url}..."
-  res = run_command("curl -sL \"#{url}\" | shasum -a 256")
+  res = run_command("curl -sL --fail \"#{url}\" | shasum -a 256")
   return nil unless res
   res.split.first
 end
