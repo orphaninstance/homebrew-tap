@@ -46,7 +46,7 @@ jobs:
 
             git checkout -b "$BRANCH_NAME"
             git commit -m "Update kitty-linux to version ${FINAL_VERSION}"
-            git push origin "$BRANCH_NAME"
+            git push origin "$BRANCH_NAME" --force
 
             # Create Pull Request and add the trigger label
             gh pr create --title "Update kitty-linux to version ${FINAL_VERSION}" \
