@@ -52,7 +52,7 @@ jobs:
             gh pr create --title "Update kitty-linux to version ${FINAL_VERSION}" \
                              --body "Automated update of kitty-linux to version ${FINAL_VERSION}." \
                              --base main \
-                             --head "$BRANCH_NAME"
+                             --head "$BRANCH_NAME" || true
 
             # Add the label that triggers the merge job
             gh pr edit --add-label "pr-pull"
