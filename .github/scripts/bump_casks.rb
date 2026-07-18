@@ -67,7 +67,10 @@ def bump_cask(cask_name, new_version)
       return false
     end
 
-    replacement = updated_content.gsub!(/#{Regexp.escape(key)}:\s+"[a-f0-9]{64}"/, "#{key}: \"#{sha}\"")
+    replacement = updated_content.gsub!(
+      /(#{Regexp.escape(key)}:)(\s+)"[a-f0-9]{64}"/,
+      "\\1\\2\"#{sha}\""
+    )
     unless replacement
       warn "Failed to update SHA for #{key} in #{file_path}"
       return false
