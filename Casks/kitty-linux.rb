@@ -2,7 +2,7 @@ cask "kitty-linux" do
   arch arm: "arm64", intel: "x86_64"
 
   version "0.48.0"
-  sha256 arm64_linux: "29d106d9bf51adf78a519ac9feab9c3f696f6edd3f1b0e6da80e2803649bbd5e",
+  sha256 arm64_linux:  "29d106d9bf51adf78a519ac9feab9c3f696f6edd3f1b0e6da80e2803649bbd5e",
          x86_64_linux: "ab2009af6acf58abafbfeb1dd1cbd4a6c1aa7991c5820c2cbd9fbb2f42d8c416"
 
   url "https://github.com/kovidgoyal/kitty/releases/download/v#{version}/kitty-#{version}-#{arch}.txz"
