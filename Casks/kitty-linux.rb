@@ -26,18 +26,14 @@ cask "kitty-linux" do
   artifact "share/terminfo/x/xterm-kitty",
            target: "#{Dir.home}/.terminfo/x/xterm-kitty"
 
-  preflight do
-    FileUtils.mkdir_p("#{Dir.home}/.local/share/applications")
-    FileUtils.mkdir_p("#{Dir.home}/.local/share/icons/hicolor/scalable/apps")
-    FileUtils.mkdir_p("#{Dir.home}/.terminfo/x")
-
-    File.write("#{staged_path}/kitty.desktop", <<~EOS)
+  preflight_steps do
+    write_file "kitty.desktop", <<~EOS
       [Desktop Entry]
       Name=kitty
       Comment=GPU-based terminal emulator
       GenericName=Terminal Emulator
-      Exec=#{HOMEBREW_PREFIX}/bin/kitty
-      Icon=#{Dir.home}/.local/share/icons/hicolor/scalable/apps/kitty.svg
+      Exec={{HOMEBREW_PREFIX}}/bin/kitty
+      Icon=kitty
       Type=Application
       StartupNotify=false
       StartupWMClass=kitty
